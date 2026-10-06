@@ -4,11 +4,996 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>TSIA2 English and Math practice</title>
-  <link rel="stylesheet" href="styles.css">
+  <style>
+:root {
+  color-scheme: dark;
+  --bg: #10140f;
+  --card: #1a2118;
+  --line: #31402c;
+  --text: #f3f6ef;
+  --muted: #b7c3ae;
+  --accent: #d6a24a;
+  --accent-ink: #1b1406;
+  --ok: #8fbf7a;
+  --warn: #e0a15a;
+  --danger: #d97862;
+  font-family: "Segoe UI", "Source Sans 3", sans-serif;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: radial-gradient(circle at top, #24301f, var(--bg) 42%);
+  color: var(--text);
+}
+main { max-width: 880px; margin: 0 auto; padding: 24px 16px 64px; }
+a { color: #f0d59a; }
+h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; line-height: 1.2; }
+h1 { font-size: 2rem; margin: 0.2rem 0; }
+.eyebrow { letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); font-size: 0.78rem; margin: 0; }
+.lede, .fine, .meta, .skill { color: var(--muted); }
+.card, .cat, .miss {
+  background: rgba(26, 33, 24, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 18px;
+  margin: 14px 0;
+}
+fieldset { border: 1px solid var(--line); border-radius: 12px; margin: 12px 0; }
+label { display: block; margin: 8px 0; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.spacer { flex: 1; }
+button, .choice {
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  padding: 10px 14px;
+}
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+button:disabled { opacity: 0.45; }
+.choice { display: flex; gap: 10px; align-items: flex-start; border-radius: 12px; margin: 8px 0; cursor: pointer; }
+.choice.selected { border-color: var(--accent); background: #2b2618; }
+.mark { min-width: 1.6rem; font-weight: 700; color: var(--accent); }
+.passage { white-space: pre-wrap; border-left: 3px solid var(--accent); padding-left: 12px; color: #e7ecdf; }
+.testbar, .split { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.dots { display: flex; flex-wrap: wrap; gap: 6px; }
+.dot { width: 42px; height: 42px; padding: 0; }
+.dot.done { border-color: var(--ok); }
+.dot.here { background: var(--accent); color: var(--accent-ink); }
+.dot.flag { box-shadow: inset 0 -3px 0 var(--warn); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.cat.weak { border-color: var(--warn); }
+.cat.ok { border-color: var(--ok); }
+.need { color: var(--warn); }
+.oknote { color: var(--ok); }
+.miss { border-color: var(--danger); }
+@media (max-width: 640px) {
+  h1 { font-size: 1.6rem; }
+  .testbar { align-items: flex-start; }
+}
+
+  </style>
 </head>
 <body>
   <main id="app"></main>
-  <script src="questions.js"></script>
-  <script src="app.js"></script>
+  <script>
+/* Original TSIA2-style practice items. Not College Board content.
+   Answer indexes are 0-based and verified in scripts/verify_questions.py. */
+const BANK = {
+  math: [
+    {
+      id: "m01",
+      category: "Quantitative Reasoning",
+      skill: "Percent discount",
+      stem: "A jacket priced at $80 is discounted 20%. What is the sale price?",
+      choices: ["$16", "$60", "$64", "$96"],
+      answer: 2,
+      explanation: "Choice C is correct. Twenty percent of $80 is $16, and $80 − $16 = $64. Choice A is only the discount. Choice D adds the discount instead of subtracting it."
+    },
+    {
+      id: "m02",
+      category: "Quantitative Reasoning",
+      skill: "Ratio",
+      stem: "The ratio of red pens to blue pens is 3:5. If there are 24 red pens, how many blue pens are there?",
+      choices: ["15", "40", "45", "72"],
+      answer: 1,
+      explanation: "Choice B is correct. 3/5 = 24/x, so x = 24 × 5 / 3 = 40. Choice A divides by the ratio instead of scaling it."
+    },
+    {
+      id: "m03",
+      category: "Quantitative Reasoning",
+      skill: "Percent as an expression",
+      stem: "Which expression represents 15% of x?",
+      choices: ["15x", "x + 0.15", "0.15x", "x / 15"],
+      answer: 2,
+      explanation: "Choice C is correct. 15% means 15/100 = 0.15, so 15% of x is 0.15x. Choice A multiplies by 15, which is 1,500% of x."
+    },
+    {
+      id: "m04",
+      category: "Quantitative Reasoning",
+      skill: "Proportion",
+      stem: "A recipe uses 2 cups of flour for 12 muffins. How many cups of flour are needed for 30 muffins?",
+      choices: ["2.5", "4", "5", "6"],
+      answer: 2,
+      explanation: "Choice C is correct. 2/12 = x/30, so x = 60/12 = 5. Each muffin uses 2/12 = 1/6 cup, and 30 × 1/6 = 5."
+    },
+    {
+      id: "m05",
+      category: "Quantitative Reasoning",
+      skill: "Two-step linear equation",
+      stem: "Solve for y: 3y − 6 = 15.",
+      choices: ["3", "5", "7", "9"],
+      answer: 2,
+      explanation: "Choice C is correct. Add 6 to both sides: 3y = 21. Divide by 3: y = 7. Check: 3(7) − 6 = 15."
+    },
+    {
+      id: "m06",
+      category: "Algebraic Reasoning",
+      skill: "Quadratic equation",
+      stem: "What are the solutions of x² − 5x + 6 = 0?",
+      choices: ["x = 1 and x = 6", "x = −2 and x = −3", "x = 2 and x = 3", "x = 5 and x = 6"],
+      answer: 2,
+      explanation: "Choice C is correct. x² − 5x + 6 = (x − 2)(x − 3) = 0, so x = 2 or x = 3. Both values make the original equation true."
+    },
+    {
+      id: "m07",
+      category: "Algebraic Reasoning",
+      skill: "Function evaluation",
+      stem: "If f(x) = 2x − 4, what is f(5)?",
+      choices: ["1", "6", "10", "14"],
+      answer: 1,
+      explanation: "Choice B is correct. f(5) = 2(5) − 4 = 10 − 4 = 6. Choice C stops before subtracting 4."
+    },
+    {
+      id: "m08",
+      category: "Algebraic Reasoning",
+      skill: "Equation with parentheses",
+      stem: "Solve 2(x + 3) = 14.",
+      choices: ["4", "5", "8", "11"],
+      answer: 0,
+      explanation: "Choice A is correct. Divide both sides by 2: x + 3 = 7, so x = 4. Check: 2(4 + 3) = 14."
+    },
+    {
+      id: "m09",
+      category: "Algebraic Reasoning",
+      skill: "Equivalent rational expression",
+      stem: "Which expression is equivalent to (x² − 9) / (x − 3) for x ≠ 3?",
+      choices: ["x − 3", "x − 9", "x + 3", "x² − 3"],
+      answer: 2,
+      explanation: "Choice C is correct. x² − 9 = (x − 3)(x + 3), so the factor (x − 3) cancels when x ≠ 3, leaving x + 3."
+    },
+    {
+      id: "m10",
+      category: "Algebraic Reasoning",
+      skill: "Linear model in context",
+      stem: "A phone plan costs $25 per month plus $0.10 per minute. What is the cost of 80 minutes in one month?",
+      choices: ["$25.80", "$33.00", "$35.00", "$105.00"],
+      answer: 1,
+      explanation: "Choice B is correct. Cost = 25 + 0.10(80) = 25 + 8 = 33. Choice A treats 80 cents as the usage charge."
+    },
+    {
+      id: "m11",
+      category: "Geometric and Spatial Reasoning",
+      skill: "Area of a rectangle",
+      stem: "A rectangle is 8 units long and 5 units wide. What is its area?",
+      choices: ["13 square units", "26 square units", "40 square units", "80 square units"],
+      answer: 2,
+      explanation: "Choice C is correct. Area = length × width = 8 × 5 = 40. Choice B is the perimeter, 2(8 + 5) = 26."
+    },
+    {
+      id: "m12",
+      category: "Geometric and Spatial Reasoning",
+      skill: "Pythagorean theorem",
+      stem: "A right triangle has legs of length 6 and 8. What is the length of the hypotenuse?",
+      choices: ["7", "10", "14", "48"],
+      answer: 1,
+      explanation: "Choice B is correct. 6² + 8² = 36 + 64 = 100, and √100 = 10. This is a 6-8-10 triangle, a multiple of 3-4-5."
+    },
+    {
+      id: "m13",
+      category: "Geometric and Spatial Reasoning",
+      skill: "Area of a circle",
+      stem: "A circle has radius 3. What is its area?",
+      choices: ["3π", "6π", "9π", "12π"],
+      answer: 2,
+      explanation: "Choice C is correct. Area = πr² = π(3)² = 9π. Choice B is the circumference, 2πr = 6π."
+    },
+    {
+      id: "m14",
+      category: "Geometric and Spatial Reasoning",
+      skill: "Unit conversion",
+      stem: "How many inches are in 2.5 feet?",
+      choices: ["24", "30", "32", "36"],
+      answer: 1,
+      explanation: "Choice B is correct. There are 12 inches in a foot, so 2.5 × 12 = 30 inches."
+    },
+    {
+      id: "m15",
+      category: "Geometric and Spatial Reasoning",
+      skill: "Volume of a cube",
+      stem: "A cube has side length 3. What is its volume?",
+      choices: ["9", "12", "18", "27"],
+      answer: 3,
+      explanation: "Choice D is correct. Volume = side³ = 3 × 3 × 3 = 27. Choice A is the area of one face."
+    },
+    {
+      id: "m16",
+      category: "Probabilistic and Statistical Reasoning",
+      skill: "Simple probability",
+      stem: "A bag contains 3 red tiles and 5 blue tiles. One tile is drawn at random. What is the probability it is red?",
+      choices: ["3/5", "3/8", "5/8", "1/3"],
+      answer: 1,
+      explanation: "Choice B is correct. Favorable outcomes over total outcomes: 3 red tiles out of 8 tiles, so 3/8."
+    },
+    {
+      id: "m17",
+      category: "Probabilistic and Statistical Reasoning",
+      skill: "Median",
+      stem: "What is the median of 4, 7, 7, 9, and 13?",
+      choices: ["4", "7", "8", "9"],
+      answer: 1,
+      explanation: "Choice B is correct. The values are already ordered, and the middle value of five numbers is 7. The repeated 7 does not change the middle position."
+    },
+    {
+      id: "m18",
+      category: "Probabilistic and Statistical Reasoning",
+      skill: "Mean",
+      stem: "What is the mean of 10, 12, 14, and 16?",
+      choices: ["12", "13", "14", "15"],
+      answer: 1,
+      explanation: "Choice B is correct. The sum is 52, and 52 / 4 = 13."
+    },
+    {
+      id: "m19",
+      category: "Probabilistic and Statistical Reasoning",
+      skill: "Independent events",
+      stem: "Two fair coins are flipped. What is the probability both land heads?",
+      choices: ["1/4", "1/2", "1/3", "3/4"],
+      answer: 0,
+      explanation: "Choice A is correct. Each coin has probability 1/2 of heads, and the flips are independent, so (1/2)(1/2) = 1/4. The four outcomes are HH, HT, TH, and TT."
+    },
+    {
+      id: "m20",
+      category: "Probabilistic and Statistical Reasoning",
+      skill: "Percent from a count",
+      stem: "In a group of 40 students, 16 play soccer. What percent of the group plays soccer?",
+      choices: ["4%", "16%", "25%", "40%"],
+      answer: 3,
+      explanation: "Choice D is correct. 16/40 = 0.40 = 40%. Choice B reports the count as if it were already a percent."
+    }
+  ],
+  elar: [
+    {
+      id: "e01",
+      category: "Literary Text Analysis",
+      skill: "Inference",
+      passage: "Mara set the library key on the counter and waited. The reading room was empty except for the clock over the door, which clicked past closing time. She had stayed to finish the last chapter, not because the ending surprised her, but because the quiet made each sentence feel heavier. When the night librarian appeared, he did not scold her. He turned one lamp back on and said, “Some books keep people later than they planned.”",
+      stem: "Why did Mara stay late?",
+      choices: [
+        "She was locked inside the library.",
+        "She wanted the quiet while she finished the last chapter.",
+        "The librarian asked her to shelve books.",
+        "She could not find the library key."
+      ],
+      answer: 1,
+      explanation: "Choice B is correct. The passage says she stayed to finish the last chapter because the quiet made the sentences feel heavier. The key is on the counter, so she is not locked in or missing it."
+    },
+    {
+      id: "e02",
+      category: "Literary Text Analysis",
+      skill: "Author's craft",
+      passage: "Mara set the library key on the counter and waited. The reading room was empty except for the clock over the door, which clicked past closing time. She had stayed to finish the last chapter, not because the ending surprised her, but because the quiet made each sentence feel heavier. When the night librarian appeared, he did not scold her. He turned one lamp back on and said, “Some books keep people later than they planned.”",
+      stem: "The librarian’s remark mainly suggests that",
+      choices: [
+        "he is angry about the clock.",
+        "books can hold a reader’s attention past a planned time.",
+        "the library will close for the week.",
+        "Mara should pay a late fee."
+      ],
+      answer: 1,
+      explanation: "Choice B is correct. “Some books keep people later than they planned” explains Mara’s late stay as the pull of reading, not as a penalty or a closure notice."
+    },
+    {
+      id: "e03",
+      category: "Literary Text Analysis",
+      skill: "Explicit detail",
+      passage: "Mara set the library key on the counter and waited. The reading room was empty except for the clock over the door, which clicked past closing time. She had stayed to finish the last chapter, not because the ending surprised her, but because the quiet made each sentence feel heavier. When the night librarian appeared, he did not scold her. He turned one lamp back on and said, “Some books keep people later than they planned.”",
+      stem: "Which detail shows that the library is past closing time?",
+      choices: [
+        "Mara set the key on the counter.",
+        "The clock clicked past closing time.",
+        "One lamp was turned back on.",
+        "The last chapter felt heavier."
+      ],
+      answer: 1,
+      explanation: "Choice B is correct. The clock “clicked past closing time” is the direct statement of the time. The lamp comes later and does not by itself prove the hour."
+    },
+    {
+      id: "e04",
+      category: "Informational Text Analysis",
+      skill: "Main idea",
+      passage: "Community colleges in Texas use the TSIA2 to help decide whether a student is ready for college-level coursework. The English Language Arts and Reading portion asks students to read literary and informational texts and to revise writing. The Mathematics portion asks students to reason about quantities, algebra, geometry, and data. A strong score in one subject does not replace a score in the other. The multiple-choice sections are untimed.",
+      stem: "Which statement best states the main idea of the passage?",
+      choices: [
+        "Only mathematics scores are used for placement.",
+        "TSIA2 checks readiness in ELAR and mathematics, and the subjects are scored separately.",
+        "The test must be finished in one hour.",
+        "Literary texts are not part of the ELAR portion."
+      ],
+      answer: 1,
+      explanation: "Choice B is correct. The passage names both portions and says a score in one subject does not replace the other. It also says the multiple-choice sections are untimed."
+    },
+    {
+      id: "e05",
+      category: "Informational Text Analysis",
+      skill: "Supporting detail",
+      passage: "Community colleges in Texas use the TSIA2 to help decide whether a student is ready for college-level coursework. The English Language Arts and Reading portion asks students to read literary and informational texts and to revise writing. The Mathematics portion asks students to reason about quantities, algebra, geometry, and data. A strong score in one subject does not replace a score in the other. The multiple-choice sections are untimed.",
+      stem: "According to the passage, which statement is true?",
+      choices: [
+        "A mathematics score can stand in for an ELAR score.",
+        "ELAR includes reading literary and informational texts.",
+        "Geometry is excluded from the mathematics portion.",
+        "The multiple-choice sections have a strict time limit."
+      ],
+      answer: 1,
+      explanation: "Choice B is correct. The passage says the ELAR portion asks students to read literary and informational texts. The other choices contradict the passage."
+    },
+    {
+      id: "e06",
+      category: "Informational Text Analysis",
+      skill: "Vocabulary in context",
+      passage: "Community colleges in Texas use the TSIA2 to help decide whether a student is ready for college-level coursework. The English Language Arts and Reading portion asks students to read literary and informational texts and to revise writing. The Mathematics portion asks students to reason about quantities, algebra, geometry, and data. A strong score in one subject does not replace a score in the other. The multiple-choice sections are untimed.",
+      stem: "In the passage, “portion” most nearly means",
+      choices: ["a section of the test", "a serving of food", "a grade of A", "a late fee"],
+      answer: 0,
+      explanation: "Choice A is correct. “Portion” refers to the ELAR part and the Mathematics part of the assessment, not to food, a grade, or a fee."
+    },
+    {
+      id: "e07",
+      category: "Text Synthesis",
+      skill: "Compare claims",
+      passage: "Text 1: Students who study in the evening often report that they are more alert after dinner, so they finish problem sets with fewer breaks.\n\nText 2: Students who study in the morning often report fewer online distractions, so they stay with a reading assignment longer.",
+      stem: "Which statement is supported by both texts?",
+      choices: [
+        "The time of day can affect how students stay focused.",
+        "Evening study is always better than morning study.",
+        "Focus does not matter for reading or problem sets.",
+        "Both texts report results from the same experiment."
+      ],
+      answer: 0,
+      explanation: "Choice A is correct. Text 1 ties evening alertness to fewer breaks, and Text 2 ties morning conditions to longer attention. Neither text says one time is always better or cites a shared experiment."
+    },
+    {
+      id: "e08",
+      category: "Text Synthesis",
+      skill: "Contrast claims",
+      passage: "Text 1: Students who study in the evening often report that they are more alert after dinner, so they finish problem sets with fewer breaks.\n\nText 2: Students who study in the morning often report fewer online distractions, so they stay with a reading assignment longer.",
+      stem: "How do the two texts differ?",
+      choices: [
+        "Text 1 discusses evening alertness; Text 2 discusses morning distractions.",
+        "Both texts recommend dropping homework.",
+        "Text 1 is only about sports practice.",
+        "Text 2 says evening study is required."
+      ],
+      answer: 0,
+      explanation: "Choice A is correct. The difference is the time and the condition each text names. Neither text is about sports or required evening study."
+    },
+    {
+      id: "e09",
+      category: "Essay Revision and Editing",
+      skill: "Relevance",
+      passage: "(1) The campus testing center opens at 8 a.m. (2) Students should bring a photo ID. (3) The center also sells umbrellas on rainy days. (4) Students should arrive a few minutes early so staff can check them in.",
+      stem: "Which sentence should be removed because it does not support the focus on arriving for a test?",
+      choices: ["Sentence 1", "Sentence 2", "Sentence 3", "Sentence 4"],
+      answer: 2,
+      explanation: "Choice C is correct. Sentence 3 about umbrellas does not help a reader prepare for check-in. The other sentences give the opening time, the ID rule, or the arrival advice."
+    },
+    {
+      id: "e10",
+      category: "Essay Revision and Editing",
+      skill: "Combining sentences",
+      passage: "(2) Students should bring a photo ID. (4) Students should arrive a few minutes early so staff can check them in.",
+      stem: "Which is the best way to combine sentences 2 and 4?",
+      choices: [
+        "Students should bring a photo ID, and they should arrive a few minutes early so staff can check them in.",
+        "Students should bring a photo ID they should arrive early.",
+        "Bringing a photo ID arriving early.",
+        "Students should bring a photo ID, they should arrive."
+      ],
+      answer: 0,
+      explanation: "Choice A is correct. It joins two complete ideas with a comma and a coordinating conjunction. Choice B is a run-on, Choice C is a fragment, and Choice D is a comma splice."
+    },
+    {
+      id: "e11",
+      category: "Sentence Revision and Conventions",
+      skill: "Subject-verb agreement",
+      stem: "Which sentence is grammatically correct?",
+      choices: [
+        "Each of the students have a calculator.",
+        "Each of the students has a calculator.",
+        "Each of the students have calculators for they.",
+        "Each of the student has a calculator."
+      ],
+      answer: 1,
+      explanation: "Choice B is correct. “Each” is singular, so the verb is “has.” Choice D also mismatches “each of the” with the singular noun “student.”"
+    },
+    {
+      id: "e12",
+      category: "Sentence Revision and Conventions",
+      skill: "Pronoun agreement",
+      stem: "Which sentence uses the pronoun correctly?",
+      choices: [
+        "The city updated their bus map.",
+        "The city updated its bus map.",
+        "The city updated it's bus map.",
+        "The city updated there bus map."
+      ],
+      answer: 1,
+      explanation: "Choice B is correct. “City” is one thing, so the possessive pronoun is “its.” “It’s” means “it is,” and “there” refers to a place."
+    },
+    {
+      id: "e13",
+      category: "Sentence Revision and Conventions",
+      skill: "Complete sentence",
+      stem: "Which is a complete sentence?",
+      choices: [
+        "Running across the courtyard before class.",
+        "The student running across the courtyard.",
+        "The student ran across the courtyard before class.",
+        "Because the student ran across the courtyard."
+      ],
+      answer: 2,
+      explanation: "Choice C is correct. It has a subject, “student,” and a finite verb, “ran.” The other choices are a participial phrase, a fragment missing a predicate verb, and a dependent clause."
+    },
+    {
+      id: "e14",
+      category: "Sentence Revision and Conventions",
+      skill: "Conjunctive adverb punctuation",
+      stem: "Which sentence is punctuated correctly?",
+      choices: [
+        "The lab closed at 9 p.m. however the library stayed open.",
+        "The lab closed at 9 p.m.; however, the library stayed open.",
+        "The lab closed at 9 p.m. however, the library stayed open.",
+        "The lab closed at 9 p.m., however the library stayed open."
+      ],
+      answer: 1,
+      explanation: "Choice B is correct. Two independent clauses joined by “however” take a semicolon before it and a comma after it. A comma alone creates a comma splice."
+    },
+    {
+      id: "e15",
+      category: "Sentence Revision and Conventions",
+      skill: "Commonly confused words",
+      stem: "Which sentence uses the underlined idea correctly?",
+      choices: [
+        "Their going to the testing center.",
+        "They're going to the testing center.",
+        "There going to the testing center.",
+        "Theyre going to the testing center."
+      ],
+      answer: 1,
+      explanation: "Choice B is correct. “They're” is the contraction of “they are.” “Their” is possessive, and “there” refers to a place."
+    },
+    {
+      id: "e16",
+      category: "Essay Revision and Editing",
+      skill: "Concision",
+      stem: "Which revision is the clearest?",
+      choices: [
+        "Due to the fact that the bus was late, Maya missed the start of class.",
+        "Because the bus was late, Maya missed the start of class.",
+        "The bus was late, Maya missed.",
+        "Maya missed class due to the fact of lateness of bus."
+      ],
+      answer: 1,
+      explanation: "Choice B is correct. It states the cause directly. Choice A is grammatical but wordy, Choice C is a comma splice and incomplete, and Choice D is not idiomatic."
+    },
+    {
+      id: "e17",
+      category: "Sentence Revision and Conventions",
+      skill: "Subject-verb agreement",
+      stem: "Choose the word that correctly completes the sentence: The list of supplies ___ on the desk.",
+      choices: ["are", "were", "is", "have"],
+      answer: 2,
+      explanation: "Choice C is correct. The subject is “list,” which is singular. “Of supplies” is a prepositional phrase and does not make the verb plural."
+    },
+    {
+      id: "e18",
+      category: "Sentence Revision and Conventions",
+      skill: "Commas in a series",
+      stem: "Which sentence uses commas correctly?",
+      choices: [
+        "Bring a pencil a calculator and an ID.",
+        "Bring a pencil, a calculator, and an ID.",
+        "Bring a pencil, a calculator and, an ID.",
+        "Bring, a pencil a calculator, and an ID."
+      ],
+      answer: 1,
+      explanation: "Choice B is correct. Items in a series are separated by commas. The comma before “and” is the standard series comma and is acceptable here."
+    },
+    {
+      id: "e19",
+      category: "Literary Text Analysis",
+      skill: "Inference from action",
+      passage: "The old gym smelled like floor wax and oranges. Jordan tied the last lace twice, then a third time, as if the knot could settle the noise in the bleachers.",
+      stem: "The repeated lace tying mainly suggests that Jordan",
+      choices: [
+        "is late for a chemistry exam.",
+        "is nervous before the event.",
+        "does not know how to tie shoes.",
+        "prefers oranges to floor wax."
+      ],
+      answer: 1,
+      explanation: "Choice B is correct. Tying the lace “as if the knot could settle the noise” shows an attempt to calm nerves. The passage does not mention chemistry, a lack of skill, or a preference for oranges."
+    },
+    {
+      id: "e20",
+      category: "Informational Text Analysis",
+      skill: "Inference",
+      passage: "Community colleges in Texas use the TSIA2 to help decide whether a student is ready for college-level coursework. The English Language Arts and Reading portion asks students to read literary and informational texts and to revise writing. The Mathematics portion asks students to reason about quantities, algebra, geometry, and data. A strong score in one subject does not replace a score in the other. The multiple-choice sections are untimed.",
+      stem: "A student who scores well in mathematics but has not taken ELAR should conclude that",
+      choices: [
+        "the mathematics score also proves ELAR readiness.",
+        "ELAR readiness still has to be shown separately.",
+        "the essay is optional for every Texas college course.",
+        "geometry was not part of the mathematics test."
+      ],
+      answer: 1,
+      explanation: "Choice B is correct. The passage says a strong score in one subject does not replace a score in the other. It also lists geometry as part of the mathematics portion."
+    }
+  ]
+};
+
+const PRACTICE = {
+  "Quantitative Reasoning": [
+    { label: "Khan Academy: ratios and rates", url: "https://www.khanacademy.org/math/cc-sixth-grade-math/cc-6th-ratios-prop-topic" },
+    { label: "Khan Academy: percentages", url: "https://www.khanacademy.org/math/cc-seventh-grade-math/cc-7th-fractions-decimals/cc-7th-percent-problems/v/solving-percent-problems" }
+  ],
+  "Algebraic Reasoning": [
+    { label: "Khan Academy: linear equations", url: "https://www.khanacademy.org/math/algebra/x2f8bb11595b61c86:solve-equations-inequalities" },
+    { label: "Khan Academy: quadratic equations", url: "https://www.khanacademy.org/math/algebra/x2f8bb11595b61c86:quadratic-functions-equations" }
+  ],
+  "Geometric and Spatial Reasoning": [
+    { label: "Khan Academy: area and volume", url: "https://www.khanacademy.org/math/cc-sixth-grade-math/cc-6th-geometry-topic" },
+    { label: "Khan Academy: Pythagorean theorem", url: "https://www.khanacademy.org/math/cc-eighth-grade-math/cc-8th-geometry/cc-8th-pythagorean-theorem" }
+  ],
+  "Probabilistic and Statistical Reasoning": [
+    { label: "Khan Academy: statistics and probability", url: "https://www.khanacademy.org/math/statistics-probability" },
+    { label: "Khan Academy: mean, median, and mode", url: "https://www.khanacademy.org/math/statistics-probability/summarizing-quantitative-data" }
+  ],
+  "Literary Text Analysis": [
+    { label: "Khan Academy: reading literary texts", url: "https://www.khanacademy.org/ela/cc-9th-reading-vocab/x8c7a9c6f:cc-9th-reading-for-understanding" }
+  ],
+  "Informational Text Analysis": [
+    { label: "Khan Academy: informational text", url: "https://www.khanacademy.org/ela/cc-9th-reading-vocab" }
+  ],
+  "Text Synthesis": [
+    { label: "Khan Academy: comparing arguments", url: "https://www.khanacademy.org/ela/cc-9th-reading-vocab" }
+  ],
+  "Essay Revision and Editing": [
+    { label: "Khan Academy: grammar and clarity", url: "https://www.khanacademy.org/humanities/grammar" }
+  ],
+  "Sentence Revision and Conventions": [
+    { label: "Khan Academy: grammar", url: "https://www.khanacademy.org/humanities/grammar" },
+    { label: "Purdue OWL: sentence punctuation", url: "https://owl.purdue.edu/owl/general_writing/punctuation/index.html" }
+  ]
+};
+
+const OFFICIAL = [
+  { label: "College Board TSIA2 sample questions", url: "https://accuplacer.collegeboard.org/students/tsia2-additional-resources" },
+  { label: "TSIA2 ELAR sample PDF", url: "https://accuplacer.collegeboard.org/accuplacer/pdf/tsia2-english-language-arts-reading-sample-questions.pdf" },
+  { label: "TSIA2 Mathematics sample PDF", url: "https://accuplacer.collegeboard.org/accuplacer/pdf/tsia2-mathematics-sample-questions.pdf" },
+  { label: "TSIA2 essay guide", url: "https://accuplacer.collegeboard.org/accuplacer/pdf/tsia2-essay-test-sample-essays.pdf" }
+];
+
+
+const STORAGE_KEY = "tsia2-practice-state-v1";
+const RESULTS_KEY = "tsia2-practice-results-v1";
+
+const state = {
+  view: "home",
+  session: null,
+  results: null
+};
+
+const $ = (sel) => document.querySelector(sel);
+
+function loadSession() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+  } catch {
+    return null;
+  }
+}
+
+function loadResults() {
+  try {
+    return JSON.parse(localStorage.getItem(RESULTS_KEY) || "null");
+  } catch {
+    return null;
+  }
+}
+
+function saveSession() {
+  if (!state.session) localStorage.removeItem(STORAGE_KEY);
+  else localStorage.setItem(STORAGE_KEY, JSON.stringify(state.session));
+}
+
+function saveResults(results) {
+  state.results = results;
+  localStorage.setItem(RESULTS_KEY, JSON.stringify(results));
+}
+
+function letter(i) {
+  return String.fromCharCode(65 + i);
+}
+
+function shuffle(list) {
+  const copy = list.slice();
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+function questionsFor(section) {
+  return BANK[section].map((q) => ({ ...q, section }));
+}
+
+function buildSession(form) {
+  const sections = form.sections;
+  let pool = [];
+  sections.forEach((section) => {
+    pool = pool.concat(questionsFor(section));
+  });
+  const fullCount = pool.length;
+  const count = form.length === "all" ? fullCount : Math.min(fullCount, Number(form.length));
+  const picked = shuffle(pool).slice(0, count);
+  return {
+    id: Date.now(),
+    sections,
+    lengthLabel: form.length === "all" ? "Full bank" : `${count} questions`,
+    items: picked.map((q) => q.id),
+    index: 0,
+    answers: {},
+    flags: {},
+    startedAt: Date.now(),
+    updatedAt: Date.now()
+  };
+}
+
+function itemById(id) {
+  return [...BANK.math, ...BANK.elar].find((q) => q.id === id);
+}
+
+function currentItem() {
+  const id = state.session.items[state.session.index];
+  return itemById(id);
+}
+
+function elapsed(ms) {
+  const sec = Math.floor(ms / 1000);
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+function render() {
+  const root = $("#app");
+  if (state.view === "home") root.innerHTML = homeHtml();
+  if (state.view === "test") root.innerHTML = testHtml();
+  if (state.view === "results") root.innerHTML = resultsHtml();
+  bind();
+}
+
+function homeHtml() {
+  const saved = loadSession();
+  const last = loadResults();
+  const resume = saved
+    ? `<section class="card resume">
+        <h2>Unfinished attempt</h2>
+        <p>${saved.lengthLabel} · question ${saved.index + 1} of ${saved.items.length} · saved in this browser</p>
+        <div class="row">
+          <button class="primary" data-action="resume">Resume test</button>
+          <button class="ghost" data-action="discard">Discard</button>
+        </div>
+      </section>`
+    : "";
+  const lastCard = last
+    ? `<section class="card">
+        <h2>Last score</h2>
+        <p>${last.correct} / ${last.total} correct (${last.percent}%) · ${new Date(last.finishedAt).toLocaleString()}</p>
+        <button class="ghost" data-action="last">Review last results</button>
+      </section>`
+    : "";
+  return `
+    <header class="hero">
+      <p class="eyebrow">Texas Success Initiative Assessment 2.0 · practice</p>
+      <h1>TSIA2 English and Math sample</h1>
+      <p class="lede">Original multiple-choice items written to the TSIA2 content categories. This is not the official College Board test and does not produce a CRC score.</p>
+    </header>
+    ${resume}
+    ${lastCard}
+    <form id="setup" class="card">
+      <h2>Start a test</h2>
+      <fieldset>
+        <legend>Section</legend>
+        <label><input type="radio" name="section" value="both" checked> English and Math</label>
+        <label><input type="radio" name="section" value="elar"> English only (20)</label>
+        <label><input type="radio" name="section" value="math"> Math only (20)</label>
+      </fieldset>
+      <fieldset>
+        <legend>Length</legend>
+        <label><input type="radio" name="length" value="all" checked> Full sample</label>
+        <label><input type="radio" name="length" value="5"> 5 questions</label>
+        <label><input type="radio" name="length" value="10"> 10 questions</label>
+        <label><input type="radio" name="length" value="15"> 15 questions</label>
+      </fieldset>
+      <button class="primary" type="submit">Begin</button>
+      <p class="fine">Progress is stored in this browser only. The official multiple-choice sections are untimed, so this timer is informational.</p>
+    </form>
+    <section class="card split">
+      <div>
+        <h2>What the real test covers</h2>
+        <p><strong>ELAR CRC:</strong> about 30 adaptive items, literary and informational reading plus revision and sentence skills. College-ready routes also require an essay score of 5–8.</p>
+        <p><strong>Math CRC:</strong> 20 items across quantitative, algebraic, geometric, and statistical reasoning. Statewide readiness is a CRC of 950–990, or a CRC below 950 plus Diagnostic Level 6.</p>
+      </div>
+      <div>
+        <h2>Official samples</h2>
+        <ul>${OFFICIAL.map((l) => `<li><a href="${l.url}" target="_blank" rel="noreferrer">${l.label}</a></li>`).join("")}</ul>
+      </div>
+    </section>`;
+}
+
+function testHtml() {
+  const session = state.session;
+  const q = currentItem();
+  const n = session.index + 1;
+  const total = session.items.length;
+  const selected = session.answers[q.id];
+  const flagged = !!session.flags[q.id];
+  const passage = q.passage ? `<blockquote class="passage">${escapeHtml(q.passage)}</blockquote>` : "";
+  const choices = q.choices.map((choice, i) => `
+    <label class="choice ${selected === i ? "selected" : ""}">
+      <input type="radio" name="choice" value="${i}" ${selected === i ? "checked" : ""}>
+      <span class="mark">${letter(i)}</span>
+      <span>${escapeHtml(choice)}</span>
+    </label>`).join("");
+  const dots = session.items.map((id, i) => {
+    const answered = session.answers[id] !== undefined;
+    const flag = session.flags[id];
+    return `<button class="dot ${i === session.index ? "here" : ""} ${answered ? "done" : ""} ${flag ? "flag" : ""}" data-go="${i}" aria-label="Question ${i + 1}">${i + 1}</button>`;
+  }).join("");
+  return `
+    <header class="testbar">
+      <div>
+        <p class="eyebrow">${q.section === "math" ? "Mathematics" : "ELAR"} · ${q.category}</p>
+        <h1>Question ${n} of ${total}</h1>
+      </div>
+      <div class="meta">
+        <span id="clock">${elapsed(Date.now() - session.startedAt)}</span>
+        <button class="ghost" data-action="save-exit">Save and exit</button>
+      </div>
+    </header>
+    <section class="card question">
+      ${passage}
+      <p class="skill">${q.skill}</p>
+      <h2>${escapeHtml(q.stem)}</h2>
+      <form id="choices">${choices}</form>
+      <div class="row">
+        <button class="ghost" data-action="flag">${flagged ? "Unflag" : "Flag for review"}</button>
+        <span class="spacer"></span>
+        <button class="ghost" data-action="prev" ${session.index === 0 ? "disabled" : ""}>Back</button>
+        ${session.index === total - 1
+          ? `<button class="primary" data-action="grade">Grade test</button>`
+          : `<button class="primary" data-action="next">Next</button>`}
+      </div>
+    </section>
+    <nav class="dots" aria-label="Question navigator">${dots}</nav>`;
+}
+
+function gradeSession(session) {
+  const rows = session.items.map((id) => {
+    const q = itemById(id);
+    const chosen = session.answers[id];
+    return {
+      id,
+      section: q.section,
+      category: q.category,
+      skill: q.skill,
+      stem: q.stem,
+      choices: q.choices,
+      answer: q.answer,
+      chosen,
+      correct: chosen === q.answer,
+      explanation: q.explanation
+    };
+  });
+  const correct = rows.filter((r) => r.correct).length;
+  const byCategory = {};
+  rows.forEach((r) => {
+    if (!byCategory[r.category]) byCategory[r.category] = { correct: 0, total: 0, section: r.section };
+    byCategory[r.category].total += 1;
+    if (r.correct) byCategory[r.category].correct += 1;
+  });
+  return {
+    finishedAt: Date.now(),
+    startedAt: session.startedAt,
+    lengthLabel: session.lengthLabel,
+    correct,
+    total: rows.length,
+    percent: Math.round((correct / rows.length) * 100),
+    unanswered: rows.filter((r) => r.chosen === undefined).length,
+    byCategory,
+    rows
+  };
+}
+
+function resultsHtml() {
+  const r = state.results;
+  const cats = Object.entries(r.byCategory).map(([name, stat]) => {
+    const pct = Math.round((stat.correct / stat.total) * 100);
+    const weak = pct < 80;
+    const links = (PRACTICE[name] || []).map((l) => `<a href="${l.url}" target="_blank" rel="noreferrer">${l.label}</a>`).join(" · ");
+    return `<article class="cat ${weak ? "weak" : "ok"}">
+      <h3>${name}</h3>
+      <p>${stat.correct} / ${stat.total} · ${pct}%</p>
+      ${weak ? `<p class="need">Practice this area. ${links}</p>` : `<p class="oknote">On track in this sample. ${links}</p>`}
+    </article>`;
+  }).join("");
+  const missed = r.rows.filter((row) => !row.correct).map((row) => {
+    const yours = row.chosen === undefined ? "No answer" : `${letter(row.chosen)}. ${row.choices[row.chosen]}`;
+    return `<article class="miss">
+      <p class="skill">${row.category} · ${row.skill}</p>
+      <h3>${escapeHtml(row.stem)}</h3>
+      <p><strong>Your answer:</strong> ${escapeHtml(yours)}</p>
+      <p><strong>Correct:</strong> ${letter(row.answer)}. ${escapeHtml(row.choices[row.answer])}</p>
+      <p>${escapeHtml(row.explanation)}</p>
+    </article>`;
+  }).join("");
+  return `
+    <header class="hero">
+      <p class="eyebrow">Results saved in this browser</p>
+      <h1>${r.correct} / ${r.total} correct</h1>
+      <p class="lede">${r.percent}% · ${r.lengthLabel} · ${elapsed(r.finishedAt - r.startedAt)} elapsed · ${r.unanswered} unanswered</p>
+    </header>
+    <section class="card">
+      <h2>This is not a CRC score</h2>
+      <p>Official Mathematics readiness is a CRC of 950–990, or a CRC below 950 plus Diagnostic Level 6. Official ELAR readiness is a CRC of 945–990 plus an essay of 5–8, or a CRC below 945 plus Diagnostic Level 5 or 6 and an essay of 5–8. A raw percent here cannot be converted into those scaled scores.</p>
+    </section>
+    <section class="grid">${cats}</section>
+    <section class="card">
+      <h2>${missed ? "Review these items" : "No missed items in this attempt"}</h2>
+      ${missed || "<p>Every selected item matched the checked answer key.</p>"}
+    </section>
+    <section class="card">
+      <h2>Official practice</h2>
+      <ul>${OFFICIAL.map((l) => `<li><a href="${l.url}" target="_blank" rel="noreferrer">${l.label}</a></li>`).join("")}</ul>
+      <div class="row">
+        <button class="primary" data-action="home">New test</button>
+        <button class="ghost" data-action="clear-results">Clear saved score</button>
+      </div>
+    </section>`;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "\u0026amp;")
+    .replace(/</g, "\u003c")
+    .replace(/>/g, "\u003e")
+    .replace(/"/g, "\u0026quot;");
+}
+
+function bind() {
+  const setup = $("#setup");
+  if (setup) {
+    setup.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const data = new FormData(setup);
+      const section = data.get("section");
+      const sections = section === "both" ? ["elar", "math"] : [section];
+      state.session = buildSession({ sections, length: data.get("length") });
+      saveSession();
+      state.view = "test";
+      render();
+    });
+  }
+  document.querySelectorAll("[data-action]").forEach((btn) => {
+    btn.addEventListener("click", () => handle(btn.dataset.action));
+  });
+  document.querySelectorAll("[data-go]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.session.index = Number(btn.dataset.go);
+      state.session.updatedAt = Date.now();
+      saveSession();
+      render();
+    });
+  });
+  const choices = $("#choices");
+  if (choices) {
+    choices.addEventListener("change", (event) => {
+      const q = currentItem();
+      state.session.answers[q.id] = Number(event.target.value);
+      state.session.updatedAt = Date.now();
+      saveSession();
+      render();
+    });
+  }
+}
+
+function handle(action) {
+  if (action === "resume") {
+    state.session = loadSession();
+    state.view = "test";
+    render();
+  }
+  if (action === "discard") {
+    localStorage.removeItem(STORAGE_KEY);
+    state.session = null;
+    render();
+  }
+  if (action === "last") {
+    state.results = loadResults();
+    state.view = "results";
+    render();
+  }
+  if (action === "save-exit") {
+    saveSession();
+    state.view = "home";
+    render();
+  }
+  if (action === "flag") {
+    const q = currentItem();
+    state.session.flags[q.id] = !state.session.flags[q.id];
+    saveSession();
+    render();
+  }
+  if (action === "prev" && state.session.index > 0) {
+    state.session.index -= 1;
+    saveSession();
+    render();
+  }
+  if (action === "next" && state.session.index < state.session.items.length - 1) {
+    state.session.index += 1;
+    saveSession();
+    render();
+  }
+  if (action === "grade") {
+    const unanswered = state.session.items.filter((id) => state.session.answers[id] === undefined).length;
+    const ok = unanswered === 0 || confirm(`${unanswered} question${unanswered === 1 ? "" : "s"} unanswered. Grade anyway?`);
+    if (!ok) return;
+    const results = gradeSession(state.session);
+    saveResults(results);
+    localStorage.removeItem(STORAGE_KEY);
+    state.session = null;
+    state.view = "results";
+    render();
+  }
+  if (action === "home") {
+    state.view = "home";
+    render();
+  }
+  if (action === "clear-results") {
+    localStorage.removeItem(RESULTS_KEY);
+    state.results = null;
+    state.view = "home";
+    render();
+  }
+}
+
+let clock;
+function tick() {
+  const el = $("#clock");
+  if (el && state.session) el.textContent = elapsed(Date.now() - state.session.startedAt);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  state.results = loadResults();
+  render();
+  clock = setInterval(tick, 1000);
+});
+
+  </script>
 </body>
 </html>
