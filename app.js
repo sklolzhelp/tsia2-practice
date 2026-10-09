@@ -69,6 +69,8 @@ function buildSession(form) {
     index: 0,
     answers: {},
     flags: {},
+    revealed: {},
+    gradeAsYouGo: !!form.gradeAsYouGo,
     startedAt: Date.now(),
     updatedAt: Date.now()
   };
@@ -104,7 +106,7 @@ function homeHtml() {
   const resume = saved
     ? `<section class="card resume">
         <h2>Unfinished attempt</h2>
-        <p>${saved.lengthLabel} · question ${saved.index + 1} of ${saved.items.length} · saved in this browser</p>
+        <p>${saved.lengthLabel} · question ${saved.index + 1} of ${saved.items.length}${saved.gradeAsYouGo ? " · grade as you go" : ""} · saved in this browser</p>
         <div class="row">
           <button class="primary" data-action="resume">Resume test</button>
           <button class="ghost" data-action="discard">Discard</button>
@@ -141,6 +143,10 @@ function homeHtml() {
         <label><input type="radio" name="length" value="10"> 10 questions</label>
         <label><input type="radio" name="length" value="15"> 15 questions</label>
       </fieldset>
+      <fieldset>
+        <legend>Feedback</legend>
+        <label><input type="checkbox" name="gradeAsYouGo"> Grade as you go — show whether the answer was correct when you click Next</label>
+      </fieldset>
       <button class="primary" type="submit">Begin</button>
       <p class="fine">Progress is stored in this browser only. The official multiple-choice sections are untimed, so this timer is informational.</p>
     </form>
@@ -164,13 +170,27 @@ function testHtml() {
   const total = session.items.length;
   const selected = session.answers[q.id];
   const flagged = !!session.flags[q.id];
+  const revealed = !!(session.gradeAsYouGo && session.revealed && session.revealed[q.id]);
+  const correct = selected === q.answer;
   const passage = q.passage ? `<blockquote class="passage">${escapeHtml(q.passage)}</blockquote>` : "";
   const choices = q.choices.map((choice, i) => `
-    <label class="choice ${selected === i ? "selected" : ""}">
-      <input type="radio" name="choice" value="${i}" ${selected === i ? "checked" : ""}>
+    <label class="choice ${selected === i ? "selected" : ""} ${revealed && i === q.answer ? "correct" : ""} ${revealed && selected === i && i !== q.answer ? "wrong" : ""}">
+      <input type="radio" name="choice" value="${i}" ${selected === i ? "checked" : ""} ${revealed ? "disabled" : ""}>
       <span class="mark">${letter(i)}</span>
       <span>${escapeHtml(choice)}</span>
     </label>`).join("");
+  const feedback = revealed
+    ? `<div class="feedback ${selected === undefined ? "missed" : correct ? "ok" : "bad"}">
+        <strong>${selected === undefined ? "No answer selected." : correct ? "Correct." : "Not correct."}</strong>
+        <p>${selected === undefined ? "" : `<span>Your answer: ${letter(selected)}. </span>`}Correct answer: ${letter(q.answer)}. ${escapeHtml(q.choices[q.answer])}</p>
+        <p>${escapeHtml(q.explanation)}</p>
+      </div>`
+    : "";
+  const checkedCount = session.items.filter((id) => session.revealed && session.revealed[id]).length;
+  const checkedCorrect = session.items.filter((id) => session.revealed && session.revealed[id] && session.answers[id] === itemById(id).answer).length;
+  const liveScore = session.gradeAsYouGo && checkedCount
+    ? `<span class="live">${checkedCorrect} / ${checkedCount} correct so far</span>`
+    : "";
   const dots = session.items.map((id, i) => {
     const answered = session.answers[id] !== undefined;
     const flag = session.flags[id];
@@ -179,10 +199,11 @@ function testHtml() {
   return `
     <header class="testbar">
       <div>
-        <p class="eyebrow">${q.section === "math" ? "Mathematics" : "ELAR"} · ${q.category}</p>
+        <p class="eyebrow">${q.section === "math" ? "Mathematics" : "ELAR"} · ${q.category}${session.gradeAsYouGo ? " · grade as you go" : ""}</p>
         <h1>Question ${n} of ${total}</h1>
       </div>
       <div class="meta">
+        ${liveScore}
         <span id="clock">${elapsed(Date.now() - session.startedAt)}</span>
         <button class="ghost" data-action="save-exit">Save and exit</button>
       </div>
@@ -192,13 +213,14 @@ function testHtml() {
       <p class="skill">${q.skill}</p>
       <h2>${escapeHtml(q.stem)}</h2>
       <form id="choices">${choices}</form>
+      ${feedback}
       <div class="row">
         <button class="ghost" data-action="flag">${flagged ? "Unflag" : "Flag for review"}</button>
         <span class="spacer"></span>
         <button class="ghost" data-action="prev" ${session.index === 0 ? "disabled" : ""}>Back</button>
         ${session.index === total - 1
-          ? `<button class="primary" data-action="grade">Grade test</button>`
-          : `<button class="primary" data-action="next">Next</button>`}
+          ? `<button class="primary" data-action="grade">${session.gradeAsYouGo && !revealed ? "Check answer" : "Grade test"}</button>`
+          : `<button class="primary" data-action="next">${revealed ? "Next question" : "Next"}</button>`}
       </div>
     </section>
     <nav class="dots" aria-label="Question navigator">${dots}</nav>`;
@@ -304,7 +326,11 @@ function bind() {
       const data = new FormData(setup);
       const section = data.get("section");
       const sections = section === "both" ? ["elar", "math"] : [section];
-      state.session = buildSession({ sections, length: data.get("length") });
+      state.session = buildSession({
+        sections,
+        length: data.get("length"),
+        gradeAsYouGo: data.get("gradeAsYouGo") === "on"
+      });
       saveSession();
       state.view = "test";
       render();
@@ -331,6 +357,19 @@ function bind() {
       render();
     });
   }
+}
+
+function shouldRevealFirst() {
+  const session = state.session;
+  if (!session.gradeAsYouGo) return false;
+  const id = session.items[session.index];
+  session.revealed = session.revealed || {};
+  if (session.revealed[id]) return false;
+  session.revealed[id] = true;
+  session.updatedAt = Date.now();
+  saveSession();
+  render();
+  return true;
 }
 
 function handle(action) {
@@ -366,11 +405,13 @@ function handle(action) {
     render();
   }
   if (action === "next" && state.session.index < state.session.items.length - 1) {
+    if (shouldRevealFirst()) return;
     state.session.index += 1;
     saveSession();
     render();
   }
   if (action === "grade") {
+    if (shouldRevealFirst()) return;
     const unanswered = state.session.items.filter((id) => state.session.answers[id] === undefined).length;
     const ok = unanswered === 0 || confirm(`${unanswered} question${unanswered === 1 ? "" : "s"} unanswered. Grade anyway?`);
     if (!ok) return;

@@ -61,6 +61,13 @@ button:disabled { opacity: 0.45; }
 .need { color: var(--warn); }
 .oknote { color: var(--ok); }
 .miss { border-color: var(--danger); }
+.choice.correct { border-color: var(--ok); background: #1d2a1b; }
+.choice.wrong { border-color: var(--danger); background: #2c1c18; }
+.feedback { border-radius: 12px; padding: 12px 14px; margin-top: 12px; }
+.feedback.ok { border: 1px solid var(--ok); background: #1d2a1b; }
+.feedback.bad, .feedback.missed { border: 1px solid var(--danger); background: #2c1c18; }
+.feedback p { margin: 0.4rem 0 0; }
+.live { color: var(--ok); font-weight: 700; }
 @media (max-width: 640px) {
   h1 { font-size: 1.6rem; }
   .testbar { align-items: flex-start; }
